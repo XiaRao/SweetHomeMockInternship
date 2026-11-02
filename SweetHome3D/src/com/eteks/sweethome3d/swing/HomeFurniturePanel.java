@@ -176,10 +176,11 @@ public class HomeFurniturePanel extends JPanel implements DialogView {
           }
         });
     }
-    
+
     if (controller.isPropertyEditable(HomeFurnitureController.Property.DESCRIPTION)) {
       // Create description label and its text field bound to DESCRIPTION controller property
       this.descriptionLabel = new JLabel(SwingTools.getLocalizedLabelText(preferences, HomeFurniturePanel.class, "descriptionLabel.text"));
+      // This allows the user to input and edit text for the description.
       this.descriptionTextField = new AutoCompleteTextField(controller.getDescription(), 15, preferences.getAutoCompletionStrings("HomePieceOfFurnitureDescription"));
       if (!OperatingSystem.isMacOSXLeopardOrSuperior()) {
         SwingTools.addAutoSelectionOnFocusGain(this.descriptionTextField);
@@ -190,6 +191,7 @@ public class HomeFurniturePanel extends JPanel implements DialogView {
           }
         };
       controller.addPropertyChangeListener(HomeFurnitureController.Property.DESCRIPTION, descriptionChangeListener);
+      // This updates the information and save it.
       this.descriptionTextField.getDocument().addDocumentListener(new DocumentListener() {
           public void changedUpdate(DocumentEvent ev) {
             controller.removePropertyChangeListener(HomeFurnitureController.Property.DESCRIPTION, descriptionChangeListener);
