@@ -2008,8 +2008,40 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
    * that makes it fill <code>pageFormat</code> imageable size if this attribute is <code>null</code>.
    */
   public int print(Graphics g, PageFormat pageFormat, int pageIndex) {
-    List<Selectable> printedItems = getPaintedItems(); 
+
+    if (pageIndex < 0){
+      return NO_SUCH_PAGE;
+    }
+    // Get all the viewable levels in home.
+    List<Level> homeLevels = home.getLevels();
+    List<Level> viewableHomeLevels = new ArrayList<>();
+    for (int i = 0; i < homeLevels.size(); i ++){
+      if (homeLevels.get(i).isViewable()) {
+        viewableHomeLevels.add(homeLevels.get(i));
+      }
+    }
+    if (homeLevels.isEmpty()){
+      return printSelectedLevel(g, pageFormat, pageIndex, false);
+    }
+    int nLevels = viewableHomeLevels.size();
+    if (pageIndex >= nLevels) {
+      return NO_SUCH_PAGE;
+    }
+    else{
+      Level originalLevel = this.home.getSelectedLevel();
+
+      try{
+        this.home.setSelectedLevel(viewableHomeLevels.get(pageIndex));
+        return printSelectedLevel(g, pageFormat, 0, true);
+      } finally {
+        this.home.setSelectedLevel(originalLevel);
+      }
+    }}
+
+  private int printSelectedLevel(Graphics g, PageFormat pageFormat, int pageIndex, boolean onOnePage) {
+    List<Selectable> printedItems = getPaintedItems();
     Rectangle2D printedItemBounds = getItemsBounds(g, printedItems);
+
     if (printedItemBounds != null) {
       double imageableX = pageFormat.getImageableX();
       double imageableY = pageFormat.getImageableY();
@@ -2020,7 +2052,7 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
       float columnIndex;
       int pagesPerRow;
       int pagesPerColumn;
-      if (this.home.getPrint() == null || this.home.getPrint().getPlanScale() == null) {
+      if (onOnePage || this.home.getPrint() == null || this.home.getPrint().getPlanScale() == null) {
         // Compute a scale that ensures the plan will fill the component if plan scale is null
         printScale = getPrintPreferredScale(g, pageFormat) * LengthUnit.centimeterToInch(72);
         if (pageIndex > 0) {
@@ -2047,34 +2079,35 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
         rowIndex = pageIndex / pagesPerRow;
         columnIndex = pageIndex - rowIndex * pagesPerRow;
       }
-          
-      Graphics2D g2D = (Graphics2D)g.create();
+
+      Graphics2D g2D = (Graphics2D) g.create();
       g2D.clip(new Rectangle2D.Double(imageableX, imageableY, imageableWidth, imageableHeight));
       // Change coordinates system to paper imageable origin
       g2D.translate(imageableX - columnIndex * imageableWidth, imageableY - rowIndex * imageableHeight);
       g2D.scale(printScale, printScale);
       float extraMargin = getStrokeWidthExtraMargin(printedItems, PaintMode.PRINT);
       g2D.translate(-printedItemBounds.getMinX() + extraMargin,
-          -printedItemBounds.getMinY() + extraMargin);
+              -printedItemBounds.getMinY() + extraMargin);
       // Center plan in component if possible
-      g2D.translate(Math.max(0, 
-              (imageableWidth * pagesPerRow / printScale - printedItemBounds.getWidth() - 2 * extraMargin) / 2), 
-          Math.max(0, 
-              (imageableHeight * pagesPerColumn / printScale - printedItemBounds.getHeight() - 2 * extraMargin) / 2));
+      g2D.translate(Math.max(0,
+                      (imageableWidth * pagesPerRow / printScale - printedItemBounds.getWidth() - 2 * extraMargin) / 2),
+              Math.max(0,
+                      (imageableHeight * pagesPerColumn / printScale - printedItemBounds.getHeight() - 2 * extraMargin) / 2));
       setRenderingHints(g2D);
       try {
         // Print component contents
         paintContent(g2D, printScale, PaintMode.PRINT);
       } catch (InterruptedIOException ex) {
-        // Ignore exception because it may happen only in EXPORT paint mode 
-      }   
+        // Ignore exception because it may happen only in EXPORT paint mode
+      }
+
       g2D.dispose();
       return PAGE_EXISTS;
     } else {
       return NO_SUCH_PAGE;
     }
   }
-  
+
   /**
    * Returns an image of the selected items displayed by this component 
    * (camera excepted) with no outline at scale 1/1 (1 pixel = 1cm).
